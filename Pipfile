@@ -10,6 +10,7 @@ plotly = "*"
 pandas = "*"
 networkx = "*"
 numpy = "*"
+openpyxl = "*"
 
 [dev-packages]
 
