@@ -4,6 +4,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 
+import numpy as np
 import pandas as pd
 import networkx as nx
 # import plotly.express as px
@@ -12,12 +13,13 @@ import plotly.graph_objects as go
 
 ##################
 
-def visualdta(io='IM-conv.txt'):
+def visualdta(dir='dta.xlsx'):
     """
 
     """
     # read in data
-    df = pd.read_csv(io, sep='\t', lineterminator='\r')
+    # df = pd.read_csv(dir, sep='\t', lineterminator='\r')
+    df = pd.read_excel(dir)
     # construct a graph
     graph = nx.Graph()
     # infer x, y coordinates from data
@@ -33,21 +35,30 @@ def visualdta(io='IM-conv.txt'):
             cur_y = df.Proposition.count()
         # tree
         else:
-            cur_x = nodes[row['Responds To']][0] + row.Distance
-            cur_y = df.Proposition.count() - idx
+            # deal with the P and T situation
+            if not row['Responds To'] in ['n/a', 'N/A', 'na', 'NA', '', np.nan, 'unknown', 'UNKNOWN']:
+                try:
+                    # for propositions coded with pure number
+                    cur_x = nodes[int(row['Responds To'])][0] + row.Distance
+                except:
+                    # in case of string proposition
+                    cur_x = nodes[row['Responds To']][0] + row.Distance
+                cur_y = df.Proposition.count() - idx
+            else:
+                # deal with the [B]reak situation
+                # conveniently set the current point four units to the root
+                cur_x = nodes[0][0] + row.Distance
+                cur_y = df.Proposition.count() - idx
+
         node_x.append(cur_x)
-        # should be more robust
         node_y.append(cur_y)
         nodes.update({row.Proposition: [cur_x, cur_y]})
-    # add nodes to graph with its desired position
+
     for (node, xy) in zip(nodes.keys(), list(zip(node_x, node_y))):
         graph.add_node(node, pos=(xy[0], xy[1]))
 
-    # add nodes' other attributes
-    # should fill in n/a TODO
-    for node in nodes.keys():
-        for attr in list(df.columns):
-            graph.nodes[node][attr] = df[df.Proposition == node][attr]
+    # use df to trace positions
+    df['pos'] = pd.Series(list(nodes.values()))
 
     # find edges and dotted edges
     # don't know how to incorporate dotted edges TODO
@@ -63,7 +74,7 @@ def visualdta(io='IM-conv.txt'):
                 graph.add_edge(row1.Proposition, row2.Proposition, dotted=True)
             #                 edges_dotted.append((row1.Proposition, row2.Proposition))
             else:
-                # should raise some error to guide users TODO
+                # should raise some error to guide users [@TODO]
                 pass
 
     graph.add_edges_from(edges)
@@ -80,49 +91,86 @@ def visualdta(io='IM-conv.txt'):
         edge_y.append(y1)
     #     edge_y.append(None)
 
-    node_trace = go.Scatter(
-        x=node_x, y=node_y,
+    node_trace_T = go.Scatter(
+        # first entry + all T
+        x=[df.iloc[0:1].pos[0][0]] + [x for [x, y] in df[df['Relation Type'] == 'T'].pos],
+        y=[df.iloc[0:1].pos[0][1]] + [y for [x, y] in df[df['Relation Type'] == 'T'].pos],
+        name='Narrowly on-topic (T)',
         mode='markers',
         hoverinfo='text',
+        #     hovertext=annotations,
         marker=dict(
-            showscale=True,
-            # colorscale options
-            # 'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
-            # 'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
-            # 'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
-            colorscale='Viridis',
-            reversescale=True,
-            color=[],
-            size=10,
-            colorbar=dict(
-                thickness=15,
-                title='Node Connections',
-                xanchor='left',
-                titleside='right'
-            ),
+            showscale=False,
+            #         colorscale='Viridis',
+            #         reversescale=True,
+            color='blue',
+            size=8,
+            line_width=2))
+
+    node_trace_P = go.Scatter(
+        # first entry + all T
+        x=[x for [x, y] in df[df['Relation Type'] == 'P'].pos],
+        y=[x for [x, y] in df[df['Relation Type'] == 'P'].pos],
+        name='Parallel Shift (P)',
+        mode='markers',
+        hoverinfo='text',
+        #     hovertext=annotations,
+        marker=dict(
+            showscale=False,
+            #         colorscale='Viridis',
+            #         reversescale=True,
+            color='red',
+            size=8,
+            line_width=2))
+
+    node_trace_B = go.Scatter(
+        # first entry + all T
+        x=[x for [x, y] in df[df['Relation Type'] == 'B'].pos],
+        y=[x for [x, y] in df[df['Relation Type'] == 'B'].pos],
+        name='Break (B)',
+        mode='markers',
+        hoverinfo='text',
+        #     hovertext=annotations,
+        marker=dict(
+            showscale=False,
+            #         colorscale='Viridis',
+            #         reversescale=True,
+            color='green',
+            size=8,
             line_width=2))
 
     edge_trace = go.Scatter(
         x=edge_x, y=edge_y,
-        line=dict(width=0.5, color='#888'),
+        name="responds to",
+        line=dict(width=2, color='#888'),
         hoverinfo='none',
         mode='lines')
 
-    fig = go.Figure(data=[edge_trace, node_trace],
+    # hoverlables = []
+
+    annotations = [dict(
+        x=df.iloc[i].pos[0],
+        y=df.iloc[i].pos[1],
+        hovertext=df.iloc[i].Speaker,
+        xanchor='right',
+        yanchor='bottom',
+        text=df.iloc[i].Text,
+        visible=True,
+        showarrow=False)
+        for i in range(df.shape[0])]
+
+    fig = go.Figure(data=[edge_trace, node_trace_T, node_trace_P, node_trace_B],
                     layout=go.Layout(
-                        title='Visual-DTA',
-                        titlefont_size=16,
-                        showlegend=False,
+                        title='Visual-DTA: A Demo',
+                        titlefont_size=20,
+                        showlegend=True,
                         hovermode='closest',
                         margin=dict(b=20, l=5, r=5, t=40),
-                        annotations=[dict(
-                            text="Python code: <a href='hhttps://github.com/Wang-Haining/VisualDTA'> https://github.com/Wang-Haining/VisualDTA/</a>",
-                            showarrow=False,
-                            xref="paper", yref="paper",
-                            x=0.005, y=-0.002)],
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                        annotations=annotations,
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=True),
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=True))
                     )
+
     return fig
 
 ##################
