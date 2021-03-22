@@ -9,6 +9,7 @@ dash = "*"
 plotly = "*"
 pandas = "*"
 networkx = "*"
+numpy = "*"
 
 [dev-packages]
 
