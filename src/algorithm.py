@@ -1,12 +1,17 @@
+"""
+Author: Haining Wang hw56@indiana.edu
+"""
+
+import io
+import base64
+import warnings
 import numpy as np
 import pandas as pd
 import networkx as nx
-import plotly.express as px
 import plotly.graph_objects as go
-
-import warnings
 warnings.simplefilter("ignore")
 
+# reduced fool-proof
 UNKNOWN = ['n/a', 'N/A', 'na', 'NA', '', np.nan, 'unknown', 'UNKNOWN', '?', '??', "???"]
 YES = [1, 'yes', 'y', 'Yes', 'YES', 'Y']
 NO = [0, 'no', 'n', 'No', 'NO', 'N']
@@ -16,9 +21,10 @@ class DTA(object):
     """
     DTA class is used to do the heavy lifting on https://visual-dta.herokuapp.com/.
     """
-    def __init__(self):
+
+    def __init__(self, df):
         # construct a dataframe to hold user input
-        self.df = None
+        self.df = df
         # construct a graph
         self.graph = nx.Graph()
         # hold nodes' position
@@ -31,23 +37,69 @@ class DTA(object):
         self.edge_dotted_x = []
         self.edge_dotted_y = []
 
-    def read_in(self, file='./samples/BiliBili_comments.xlsx'):
-        """
-        TODO
-        Supports reading in three formats:
-            Comma-separated values(.csv)
-            tab delimited text (.txt), and
-            excel (.xlsx).
 
-        :param file: a str in ['csv', 'txt', 'xlsx']
-        :return: a pd.DataFrame instance
-        """
-        # if not isinstance(raw, str):
-        #     raise ValueError(
-        #         f"""List of raw text documents expected, {type(raw)} object received."""
-        #     )
+    # def read_in_uploaded(self, contents, filename):
+    #     """
+    #     TODO
+    #     Supports reading in three formats:
+    #         Comma-separated values(.csv)
+    #         tab-delimited text (.txt), and
+    #         excel (.xlsx).
+    #
+    #     :param filename:
+    #     :param contents:
+    #     :return: a pd.DataFrame instance
+    #     """
+    # # def parse_data_upload(contents, filename):
+    #     content_type, content_string = contents.split(',')
+    #     decoded = base64.b64decode(content_string)
+    #     try:
+    #         if "csv" in filename:
+    #             # Assume that the user uploaded a CSV or TXT file
+    #             self.df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
+    #         elif "xls" in filename:
+    #             # Assume that the user uploaded an excel file
+    #             self.df = pd.read_excel(io.BytesIO(decoded))
+    #         elif "txt" or "tsv" in filename:
+    #             # Assume that the user upl, delimiter = r'\s+'oaded an excel file
+    #             self.df = pd.read_csv(io.StringIO(decoded.decode("utf-8")), delimiter=r"\s+")
+    #     except:
+    #         pass
+    #
+    # def read_in_demo(self,
+    #                  filepath='./samples/BiliBili_comments.xlsx',
+    #                  filename='BiliBili_comments.xlsx'):
+    #     """
+    #     TODO
+    #     Supports reading in three formats: Comma-separated values(.csv),tab-delimited text (.txt), and excel (.xlsx).
+    #     :param filename:
+    #     :param filepath:
+    #     :return: a pd.DataFrame instance
+    #     """
+    #     try:
+    #         if 'xlsx' in filename:
+    #             self.df = pd.read_excel(filepath)
+    #
+    #         elif 'txt' in filename:
+    #             self.df = pd.read_csv(filepath, delimiter='\t')
+    #
+    #         elif 'csv' in filename:
+    #             self.df = pd.read_csv(filepath, delimiter=',')
+    #     except:
+    #         pass
 
-        self.df = pd.read_excel(file)
+    # def check_feed_back(self):
+    #     """
+    #     Check:
+    #         1.heading spelling: Distance, Proposition
+    #         2. distance can only have number (int or float), space and comma can be detected and removed
+    #             proposition can take any string and number, space can be detected and removed, we encourage to use
+    #             string and integer.
+    #         3. fixed coding tag, and tag's corresponding distance
+    #     Two mode? informative or showcase
+    #     :return:
+    #     """
+    #     pass
 
     def process_nodes(self):
         # calculates x, y coordinates from data
@@ -55,14 +107,14 @@ class DTA(object):
         node_y = []
 
         for idx, row in self.df.iterrows():
-            # root
+            # root, root should starts from x==0, suggested by SCH
             if idx == 0:
-                cur_x = 1.0
+                cur_x = 0
                 cur_y = self.df.Proposition.count()
             # tree
             else:
                 # deal with the P and T situation
-                # cur_x' calculation is subjects to position (whether is the first point) and
+                # cur_x' calculation is subjective to position (whether is the first point) and
                 # 'Responds To' value
                 # TODO: ROBUST ('Responds To')
                 if not row['Responds To'] in UNKNOWN:
@@ -287,7 +339,7 @@ class DTA(object):
             text=self.df.iloc[i].Text,
             visible=True,
             showarrow=False)
-            for i in range(self. df.shape[0])]
+            for i in range(self.df.shape[0])]
 
         return annotations
 
@@ -299,6 +351,8 @@ class DTA(object):
                             titlefont_size=20,
                             showlegend=True,
                             hovermode='closest',
+                            width=1000,
+                            height=1000,
                             margin=dict(b=20, l=5, r=5, t=40),
                             annotations=self.annotations(),
                             xaxis=dict(showgrid=False, zeroline=False, showticklabels=True),

@@ -11,6 +11,9 @@ pandas = "*"
 networkx = "*"
 numpy = "*"
 openpyxl = "*"
+xlrd = "*"
+chardet = "*"
+dash-extensions = "*"
 
 [dev-packages]
 

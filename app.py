@@ -1,271 +1,319 @@
+"""
+Author: Haining Wang hw56@indiana.edu
+"""
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
-
+import json
 import numpy as np
 import pandas as pd
-import networkx as nx
-import plotly.express as px
-import plotly.graph_objects as go
+import dash_core_components as dcc
+import dash_html_components as html
+from dash_extensions import Download
+from dash.dependencies import Input, Output
+from dash_extensions.snippets import send_file
 
-# from src.guide import GUIDE
-from src.main import DTA
+from src import static
+from src.algorithm import DTA
 
 import warnings
-warnings.simplefilter("ignore")
+# warnings.simplefilter("ignore")
 
 UNKNOWN = ['n/a', 'N/A', 'na', 'NA', '', np.nan, 'unknown', 'UNKNOWN', '?', '??', "???"]
 YES = [1, 'yes', 'y', 'Yes', 'YES', 'Y']
 NO = [0, 'no', 'n', 'No', 'NO', 'N']
+TYPES = ['B', 'P', 'T']
+HEADINGS = ['Proposition', 'Speaker', 'Responds To', 'Relation Type', 'Distance', 'Dotted Line', 'Text']
+
+# for page foot
+MARKDOWN_STYLE_SMALL = {'fontFamily': 'Times', 'fontSize': 15}
+# for normal display
+MARKDOWN_STYLE_NORMAL = {'fontFamily': 'Times', 'fontSize': 20}
+# for error feedback
+MARKDOWN_STYLE_LARGE = {'fontFamily': 'Times', 'fontSize': 30, 'bold': True}
 
 ##################
 
-dta = DTA()
-dta.read_in('./samples/BiliBili_comments.xlsx')
-dta.process_nodes()
-dta.process_edges()
-fig = dta.boxer()
+app = dash.Dash(__name__,
+                # external_stylesheets=external_stylesheets,
+                prevent_initial_callbacks=True,
+                suppress_callback_exceptions=True
+                )
 
-#
-# def visualdta(dir='./samples/BiliBili_comments'):
-#     """
-#
-#     """
-#     # read in data
-#     # df = pd.read_csv(dir, sep='\t', lineterminator='\r')
-#     df = pd.read_excel(dir)
-#     # construct a graph
-#     graph = nx.Graph()
-#     # infer x, y coordinates from data
-#     node_x = []
-#     node_y = []
-#     # used to holds nodes' attributes
-#     nodes = {}
-#
-#     for idx, row in df.iterrows():
-#         # root
-#         if idx == 0:
-#             cur_x = 1
-#             cur_y = df.Proposition.count()
-#         # tree
-#         else:
-#             # deal with the P and T situation
-#             if not row['Responds To'] in ['n/a', 'N/A', 'na', 'NA', '', np.nan, 'unknown', 'UNKNOWN']:
-#                 try:
-#                     # for propositions coded with pure number
-#                     cur_x = nodes[int(row['Responds To'])][0] + row.Distance
-#                 except:
-#                     # in case of string proposition
-#                     cur_x = nodes[row['Responds To']][0] + row.Distance
-#                 cur_y = df.Proposition.count() - idx
-#             else:
-#                 # deal with the [B]reak situation
-#                 # conveniently set the current point four units to the root
-#                 cur_x = nodes[0][0] + 4
-#                 cur_y = df.Proposition.count() - idx
-#
-#         node_x.append(cur_x)
-#         node_y.append(cur_y)
-#         nodes.update({row.Proposition: [cur_x, cur_y]})
-#
-#     for (node, xy) in zip(nodes.keys(), list(zip(node_x, node_y))):
-#         graph.add_node(node, pos=(xy[0], xy[1]))
-#
-#     # use df to trace positions
-#     df['pos'] = pd.Series(list(nodes.values()))
-#
-#     # find edges and dotted edges
-#     # don't know how to incorporate dotted edges TODO
-#     # use edge attributes (https://networkx.org/documentation/stable/tutorial.html)
-#     edges = []
-#     #     edges_dotted = []
-#     for idx1, row1 in df.iterrows():
-#         for idx2, row2 in df.iterrows():
-#             if row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in [0, 'yes', 'y', 'Yes', 'YES', 'Y']:
-#                 graph.add_edge(row1.Proposition, row2.Proposition, dotted=False)
-#             #                 edges.append((row1.Proposition, row2.Proposition))
-#             elif row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in [1, 'no', 'n', 'No', 'NO', 'N']:
-#                 graph.add_edge(row1.Proposition, row2.Proposition, dotted=True)
-#             #                 edges_dotted.append((row1.Proposition, row2.Proposition))
-#             else:
-#                 # should raise some error to guide users [@TODO]
-#                 pass
-#
-#     graph.add_edges_from(edges)
-#
-#     edge_x = []
-#     edge_y = []
-#     for edge in graph.edges():
-#         x0, y0 = graph.nodes[edge[0]]['pos']
-#         x1, y1 = graph.nodes[edge[1]]['pos']
-#         edge_x.append(x0)
-#         edge_x.append(x1)
-#         #     edge_x.append(None)
-#         edge_y.append(y0)
-#         edge_y.append(y1)
-#     #     edge_y.append(None)
-#
-#     node_trace_T = go.Scatter(
-#         # first entry + all T
-#         x=[df.iloc[0:1].pos[0][0]] + [x for [x, y] in df[df['Relation Type'] == 'T'].pos],
-#         y=[df.iloc[0:1].pos[0][1]] + [y for [x, y] in df[df['Relation Type'] == 'T'].pos],
-#         name='Narrowly on-topic (T)',
-#         mode='markers',
-#         hoverinfo='text',
-#         #     hovertext=annotations,
-#         marker=dict(
-#             showscale=False,
-#             #         colorscale='Viridis',
-#             #         reversescale=True,
-#             color='blue',
-#             size=8,
-#             line_width=2))
-#
-#     node_trace_P = go.Scatter(
-#         # first entry + all T
-#         x=[x for [x, y] in df[df['Relation Type'] == 'P'].pos],
-#         y=[x for [x, y] in df[df['Relation Type'] == 'P'].pos],
-#         name='Parallel Shift (P)',
-#         mode='markers',
-#         hoverinfo='text',
-#         #     hovertext=annotations,
-#         marker=dict(
-#             showscale=False,
-#             #         colorscale='Viridis',
-#             #         reversescale=True,
-#             color='red',
-#             size=8,
-#             line_width=2))
-#
-#     node_trace_B = go.Scatter(
-#         # first entry + all T
-#         x=[x for [x, y] in df[df['Relation Type'] == 'B'].pos],
-#         y=[x for [x, y] in df[df['Relation Type'] == 'B'].pos],
-#         name='Break (B)',
-#         mode='markers',
-#         hoverinfo='text',
-#         #     hovertext=annotations,
-#         marker=dict(
-#             showscale=False,
-#             #         colorscale='Viridis',
-#             #         reversescale=True,
-#             color='green',
-#             size=8,
-#             line_width=2))
-#
-#     edge_trace = go.Scatter(
-#         x=edge_x, y=edge_y,
-#         name="responds to",
-#         line=dict(width=2, color='#888'),
-#         hoverinfo='none',
-#         mode='lines')
-#
-#     # hoverlables = []
-#
-#     annotations = [dict(
-#         x=df.iloc[i].pos[0],
-#         y=df.iloc[i].pos[1],
-#         hovertext=df.iloc[i].Speaker,
-#         xanchor='right',
-#         yanchor='bottom',
-#         text=df.iloc[i].Text,
-#         visible=True,
-#         showarrow=False)
-#         for i in range(df.shape[0])]
-#
-#     fig = go.Figure(data=[edge_trace, node_trace_T, node_trace_P, node_trace_B],
-#                     layout=go.Layout(
-#                         title='Visual-DTA: A Demo',
-#                         titlefont_size=20,
-#                         showlegend=True,
-#                         hovermode='closest',
-#                         margin=dict(b=20, l=5, r=5, t=40),
-#                         annotations=annotations,
-#                         xaxis=dict(showgrid=False, zeroline=False, showticklabels=True),
-#                         yaxis=dict(showgrid=False, zeroline=False, showticklabels=True))
-#                     )
-#
-#     return fig
+# server = app.server
 
-##################
+md_intro = '''
+Visual DTA visualizes the structure of the topic flow within a conversation.
+The philosophy behind it follows
+[*Dynamic Topic Analysis of Synchronous Chat*](https://ella.sice.indiana.edu/~herring/dta.html),
+proposed by [Dr. Susan Herring](https://info.sice.indiana.edu/~herring/) at Indiana University Bloomington.
 
+We encourage you to take a look at the [user manual](https://info.sice.indiana.edu/~herring/VisualDTA/) before starting.
+If you know Visual DTA jargon like *proposition* and *semantic distance* you are ready to go✅
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+Upload your data, and we will do a superficial validity check before visualizing.
+You can also try some [existing examples](./demo) or [download the template](./template).
+'''
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+md_specify_data = '''
+Upload your data in comma/tab-separated values (`.csv`/`.tsv`/`.txt`) or Excel (`.xlsx`/`.xls`) format. 
+Or, choose an example and see how Visual DTA performs.
+You can also down a void template for your own data. 
+'''
 
-server = app.server
+md_check = """
+A superficial check will be performed on the data.
+"""
 
-# app.layout = html.Div([
-#     html.H2('VisualDTA'),
-#     dcc.Dropdown(
-#         id='dropdown',
-#         options=[{'label': i, 'value': i} for i in ['.csv', '.xlsx']],
-#         value='csv'
-#     ),
-#     html.Div(id='display-value')
-# ])
+md_generate = """
+Click to visualize the topic flow.
+"""
 
-app.layout = html.Div(children=[
-    html.H1(
-        children='Visual-DTA: A Demo',
-        style={
-            'textAlign': 'center',
+md_foot = """
+**Licence**: Visual DTA is under the MIT licence.
+
+**Feedback**: For any questions, please drop us a line on [GitHub](https://github.com/Wang-Haining/VisualDTA/issues).
+
+**Contact**:
+
+Susan Herring <herring@indiana.edu> for general questions.
+
+Haining Wang <hw56@indiana.edu> for bugs. 
+"""
+
+"""
+LAYOUT BEGINS
+"""
+
+app.layout = html.Div([
+    # This "header" will persist across pages
+    # header section
+    html.H1(children='Visual DTA',
+            style={
+                'textAlign': 'center',
+                'fontFamily': 'Times',
+                'fontSize': 80}
             # 'color': colors['text']
-        }
-    ),
+            ),
+    # intro section
+    html.Div(dcc.Markdown(children=[md_intro], style=MARKDOWN_STYLE_NORMAL)),
+    # dcc.Link(dcc.Markdown('You can also try some existing data.'), href="/demo", style={'fontFamily': 'Times', 'fontSize': 20}),
+    # Each "page" will modify this element
+    html.Div(id='content-container'),
+    # html.Hr(),
+    # This Location component represents the URL bar
+    dcc.Location(id='url', refresh=False),
 
-    html.Div(children='VisualDTA is an application that can be used to assist Dynamic Topic Analysis (DTA) by '
-                      'providing a way to visualize the structure of the topic flow within a conversation. \n This '
-                      'project is still under construction.',
-             style={
-                    'textAlign': 'left',
-                    'textSize': '20',
-                    # 'color': colors['text']
-    }),
+    html.Hr(),
+    # # reset graph
+    # html.Button(id='submit-button-state', n_clicks=0, children='Reset')
 
-    # dcc.Graph(figure=visualdta())
-    dcc.Graph(figure=fig)
-])
+    # foot
+    dcc.Markdown(md_foot, style=MARKDOWN_STYLE_SMALL),
+    html.Hr(),
+    # visualize button's trigger div
+    # html.Div(id='trigger', children=0, style=dict(display='none'))
+
+], className="container")
+
+"""
+STATIC FUNCTIONS Begins
+"""
 
 
-# @app.callback(dash.dependencies.Output('display-value', 'children'),
-#               [dash.dependencies.Input('dropdown', 'value')])
-# def display_value(value):
-#     return 'You have selected "{}"'.format(value)
+@app.callback(
+    Output('content-container', 'children'),
+    [Input('url', 'pathname')])
+def display_page(pathname):
+    # print(pathname)
+    if pathname == '/':
+        return html.Div([
+            # html.Div('You are on the index page.'),
+
+            # the dcc.Link component updates the `Location` pathname
+            # without refreshing the page
+            # dcc.Link(dcc.Markdown('You can also try some existing data.'), href="/demo", style=MARKDOWN_STYLE_NORMAL),
+            # html.Hr(),
+            # html.A('Go to page 2 but refresh the page', href="/demo")
+
+            # to show starts
+            html.Hr(),
+            # Step 1
+            html.Div(
+                [
+                    dcc.Markdown(children="Step 1", style=MARKDOWN_STYLE_LARGE),
+                    dcc.Markdown(children=md_specify_data, style=MARKDOWN_STYLE_NORMAL),
+                ]
+            ),
+            html.Div(
+                [
+                    html.Tr(
+                        [
+                            # upload
+                            html.Th([
+                                dcc.Upload(
+                                    id='upload',
+                                    children=html.Div([
+                                        'Drag and Drop or ',
+                                        html.A('Select Files'),
+                                        ' in .xlsx, .csv, or .txt.',
+                                    ]),
+                                    style={
+                                        'lineHeight': '60px',
+                                        'borderWidth': '1px',
+                                        'borderStyle': 'dashed',
+                                        'borderRadius': '5px',
+                                        'textAlign': 'center',
+                                        'margin': '10px'
+                                    },
+                                ),
+                            ], style={'height': '40px', 'width': '500px', "borderBottom": 'none'}),
+                        ],
+                    )
+                ]
+            ),
+
+            html.Hr(),
+            # Step 2
+            html.Div(
+                [
+                    dcc.Markdown(children='Step 2', style=MARKDOWN_STYLE_LARGE),
+                    dcc.Markdown(children=md_check, style=MARKDOWN_STYLE_NORMAL),
+                    dcc.Markdown(id='feedback'),
+                    # html.Div(id='cache')
+                ]
+            ),
+
+            html.Hr(),
+            # Step 3
+            # generate graph
+            html.Div(
+                [
+                    dcc.Markdown(children='Step 3', style=MARKDOWN_STYLE_LARGE),
+                    dcc.Markdown(children=md_generate, style=MARKDOWN_STYLE_NORMAL),
+                    html.Button(id='visualize', children='Visualize topic flow', disabled=False,
+                                style={'height': "60px", 'width': "450px", 'margin': '10px'}),
+                    html.Div(id='dta_graph',
+                             style={'textAlign': 'center'}
+                             ),
+                    # dcc.Store stores the uploaded file
+                    dcc.Store(id='shared_file')
+                ]
+
+            ),
+            # to show ends
+        ])
+    elif pathname == '/demo':
+        return html.Div([
+            # demo opening
+            dcc.Markdown('Choose an example.', style=MARKDOWN_STYLE_NORMAL),
+            # dropdown
+            html.Th([
+                dcc.Dropdown(
+                    id='dropdown',
+                    options=[
+                        {'label': 'en_whole.txt', 'value': 'example_whole'},
+                        {'label': 'en_citizen3_1.txt', 'value': 'example_citizen'},
+                        {'label': 'zh_danmu.xlsx', 'value': 'example_danmu'}
+                    ],
+                    # value='example_whole'
+                ),
+            ], style={'height': '30px', 'width': '450px', "borderBottom": 'none'}),
+            # graph to show [TODO]
+            html.Div(id='drop_down_show_graph'),
+            # go back home
+            dcc.Link(dcc.Markdown('Go back home'), href="/", style=MARKDOWN_STYLE_NORMAL),
+        ])
+    elif pathname == '/template':
+        return html.Div([
+            # template opening
+            dcc.Markdown('Download the template or an existing example.', style=MARKDOWN_STYLE_NORMAL),
+            # download
+            html.Div([html.Button("Download the template", id="btn_download_template"), Download(id="download_template")
+                      ]),
+            # go back home
+            dcc.Link(dcc.Markdown('Go back home'), href="/", style=MARKDOWN_STYLE_NORMAL),
+        ])
+    else:
+        # feedback error 404
+        return dcc.Markdown('Error: no content available', style=MARKDOWN_STYLE_LARGE)
+
+
+@app.callback(Output("download_template", "data"), [Input("btn_download_template", "n_clicks")])
+def return_pdf(n_clicks):
+    return send_file("./samples/template.xlsx")
+
+
+@app.callback(Output('feedback', 'children'),
+              Output('shared_file', 'data'),
+              Input('upload', 'contents'),
+              Input('upload', 'filename'))
+def check_upload(contents, filename):
+
+    df = static.read_in_uploaded(contents, filename)
+    shared_file = None
+    # 1. check if we successfully read in a dataframe
+    if isinstance(df, pd.DataFrame):
+        feedback = """🎉🎉🎉 **Successfully uploaded!**  """
+        # check headings
+        feedback += static.check_heading(df)
+        feedback += static.check_minimal_length(df)
+        feedback += static.check_equal_length(df)
+        feedback += static.check_first_row(df)
+        feedback += static.check_blank_value(df)
+        feedback += static.check_value_type(df)
+        # store the uploaded file
+        shared_file = df.to_json(date_format='iso', orient='split')
+    # if we did not read in a dataframe
+    else:
+        feedback = df
+    return feedback, shared_file
+
+
+@app.callback(Output("dta_graph", 'figure'),
+              Input('visualize', 'n_clicks'),
+              Input('shared_file', 'data'))
+def visualize(n_clicks, data):
+
+    df = pd.read_json(data, orient='split')
+    # dta = DTA(df)
+    # dta.process_nodes()
+    # dta.process_edges()
+    # fig = dta.boxer()
+
+    # if n_clicks:
+    #     return fig
+    print(df)
+
+
+@app.callback(Output('drop_down_show_graph', 'children'),
+              Input('dropdown', 'value'))
+def show_dropdown(dropdown):
+    df = ''
+    if dropdown == 'example_whole':
+        df = static.read_in_demo('./samples/whole.txt', 'whole.txt')
+    elif dropdown == 'example_citizen':
+        df = static.read_in_demo('./samples/citizen3-1.txt', 'citizen3-1.txt')
+    elif dropdown == 'example_danmu':
+        df = static.read_in_demo('./samples/BiliBili_comments.xlsx', 'BiliBili_comments.xlsx')
+    else:
+        # if dropdown is None
+        pass
+    # [TODO]
+    graph = "A graph will show here."
+    return graph
+
+
+# demo reset [TODO]
+# @app.callback(Output('graph&reset', 'children'),
+#               Input('reset', 'n_clicks'))
+# def demo_reset(n_clicks):
+#     if n_clicks > 0:
+#         return html.Div(id='void')
+
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
-
-
-
-
-# import os
-#
-# import dash
-# import dash_core_components as dcc
-# import dash_html_components as html
-#
-# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-#
-# app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-#
-# server = app.server
-#
-# app.layout = html.Div([
-#     html.H2('VisualDTA'),
-#     dcc.Dropdown(
-#         id='dropdown',
-#         options=[{'label': i, 'value': i} for i in ['.csv', '.xlsx']],
-#         value='csv'
-#     ),
-#     html.Div(id='display-value')
-# ])
-#
-# @app.callback(dash.dependencies.Output('display-value', 'children'),
-#               [dash.dependencies.Input('dropdown', 'value')])
-# def display_value(value):
-#     return 'You have selected "{}"'.format(value)
-#
-# if __name__ == '__main__':
-#     app.run_server(debug=True)
+    app.run_server(debug=True,
+                   use_reloader=False,
+                   dev_tools_ui=True,
+                   dev_tools_props_check=False,
+                   port=8080
+                   )
