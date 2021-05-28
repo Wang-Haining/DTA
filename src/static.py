@@ -13,7 +13,9 @@ HEADINGS = {'Proposition', 'Speaker', 'Responds To', 'Relation Type', 'Distance'
 LOWER_HEADINGS = set(str.lower(h) for h in HEADINGS)
 
 MD_UPLOAD_FAIL = """**😭 Uploading Failed**.  
-        Please upload data in comma/tab-separated values (`.csv`/`.tsv`/`.txt`) or Excel (`.xlsx`/`.xls`) format and use the right suffix accordingly.  """
+        Please upload data in comma/tab-separated values (`.csv`/`.tsv`/`.txt`) or Excel (`.xlsx`/`.xls`) format and use the right suffix accordingly.
+        
+        """
 
 
 MD_FEEDBACK_HEADING = f"""Please make sure the following seven headings are specified: {list(HEADINGS)}.
@@ -80,7 +82,11 @@ def check_heading(df):
     Headings should be included: Proposition/Speaker/Responds To/Relation Type/Distance/Dotted Line/Text.
     Case-insensitive, sequence-insensitive.
     """
-    feedback = "Heading check:  "
+    feedback = """
+    
+    Heading check:
+    
+    """
     unique_lower_headings = set(str.lower(h) for h in set(df.columns))
     if len(unique_lower_headings) == 7 and unique_lower_headings == LOWER_HEADINGS:
         # desired situation: 7 headings without overlap
@@ -129,15 +135,23 @@ def check_minimal_length(df):
     """
     Checks if the `proposition` has at least two values
     """
-    feedback = "Minimal length check:  "
-    feedback += 'Looks good.  ' if df['Proposition'].count() >= 2 else 'Proposition count is too short (less than two).  '
+    feedback = """
+    
+    Minimal length check:
+    
+    """
+    feedback += """Looks good.""" if df['Proposition'].count() >= 2 else """Proposition count is too short (less than two)."""
     return feedback
 
 def check_equal_length(df):
     """
     Checks whether each column has the same length to `Proposition` column.
     """
-    feedback = 'Equal length check:  '
+    feedback = """
+    
+    Equal length check:
+    
+    """
     proposition_values_count = len(df.Proposition)
     heading_of_diff_len = set(heading if len(df[heading]) != proposition_values_count else None for heading in HEADINGS) - {None}
     if len(heading_of_diff_len) != 0:
@@ -145,7 +159,11 @@ def check_equal_length(df):
         'is' if len({heading_of_diff_len})==1 else 'are'} not equal to the length of the "Proposition" column.  """
     else:
         pass
-    feedback += 'Looks good.  ' if feedback == 'Equal length check:  ' else ""
+    feedback += """Looks good.""" if feedback == """
+    
+    Equal length check:
+    
+    """ else ""
     return feedback
 
 def check_first_row(df):
@@ -156,7 +174,11 @@ def check_first_row(df):
         2. four headings (Responds To, Relation Type, Distance, and Dotted Line) should be "NA" (or one of the `UNKNOWN`)
         3. two headings (Speaker and Text) should have some value
     """
-    feedback = "First row check:  "
+    feedback = """
+    
+    First row check:
+    
+    """
     # check the first value under `Proposition`
     feedback += '' if df['Proposition'][0] == 0 else 'Please specify the first value under Proposition as "0".  '
     try:
@@ -170,7 +192,11 @@ def check_first_row(df):
         feedback += '' if df['Text'][0] != np.nan else 'The first value under "Text" should not be blank.  '
     except:
         pass
-    feedback += "Looks good.  " if feedback == "First row check:  " else ""
+    feedback += "Looks good.  " if feedback == """
+    
+    First row check:
+    
+    """ else ""
     return feedback
 
 def check_blank_value(df):
@@ -178,7 +204,11 @@ def check_blank_value(df):
     Checks if the values under headings are blank.
     Values under `Proposition` `Speaker` should never be blank or 'NA'.
     """
-    feedback = 'Blank value check:  '
+    feedback = """
+    
+    Blank value check:
+    
+    """
     try:
         feedback += '' if len(
             df.Proposition) > df.Proposition.count() else 'Values under "Proposition" should never be blank or "NA".  '
@@ -188,7 +218,11 @@ def check_blank_value(df):
         #     df.Text) > df.Text.count() else 'Values under "Text" should never be blank or "NA".  '
     except:
         pass
-    feedback += "Looks good.  " if feedback == 'Blank value check:  ' else ""
+    feedback += "Looks good." if feedback == """
+    
+    Blank value check:
+    
+    """ else ""
     return feedback
 
 def check_value_type(df):
@@ -202,7 +236,11 @@ def check_value_type(df):
     [TODO]
     No checks on `Speaker` and `Text`, but will convert values of those two column into strings (excluding the first values)
     """
-    feedback = "Value type check:  "
+    feedback = """
+    
+    Value type check:
+    
+    """
     try:
         # Proposition
         feedback += '' if len(df.Proposition) == len(set(df.Proposition)) else 'Make sure no overlap or "NA" exists in "Proposition" column.  '
@@ -229,8 +267,32 @@ def check_value_type(df):
             feedback += "" if dotted_line_str[i] in ['1', '0'] else f'''The {i}{'st' if str(i)[-1] == '1' else ('nd' if str(i)[-1] == '2' else ('rd' if str(i)[-1] == '3' else 'th'))} row's dotted line is specified incorrectly. Use "1" to indicate a tenuous connection between propositions and "0" otherwise.  '''
     except:
         pass
-    feedback += "Looks good.  " if feedback == "Value type check:  " else ""
+    feedback += "Looks good." if feedback == """
+    
+    Value type check:
+    
+    """ else ""
     return feedback
 
+def check_order(df):
+    """
+    Checks if value in `Responds To` appears before `Proposition`.
+    """
+    feedback = """"""
+    try:
+        proposition = list(df.Proposition[1:].astype(str))
+        respondsto = list(df['Responds To'][1:].astype(str))
 
+        for i, v in enumerate(proposition):
+            for j, u in enumerate(respondsto):
+                if u == v and j < i:
+                    feedback += f'''"Responds To" value {u} (in the {j+3}{'st' if str(i)[-1] == '1' else ('nd' if str(i)[-1] == '2' else ('rd' if str(i)[-1] == '3' else 'th'))} row) appears ealier than its corresponding "Propostion" value {v}, double check it.'''
+                elif u == v and j == i:
+                    feedback += f'''"Responds To" value {u} (in the {j+3}{'st' if str(i)[-1] == '1' else ('nd' if str(i)[-1] == '2' else ('rd' if str(i)[-1] == '3' else 'th'))} row) and its corresponding "Propostion" value {v} appear at the same row, double check it.'''
+                else:
+                    pass
+    except:
+        pass
+    feedback += "" if feedback == "" else ''' Please make sure the corresponding value in "Propostion" appears before the value in "Responds To".'''
+    return feedback
 

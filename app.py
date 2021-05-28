@@ -191,9 +191,16 @@ def display_page(pathname):
                     dcc.Markdown(children=md_generate, style=MARKDOWN_STYLE_NORMAL),
                     html.Button(id='visualize', children='Visualize topic flow', disabled=False,
                                 style={'height': "60px", 'width': "450px", 'margin': '10px'}),
-                    html.Div(id='dta_graph',
-                             style={'textAlign': 'center'}
-                             ),
+                    html.Div(id='dta_graph'),
+                    html.Div([dcc.RadioItems(
+                                id='hide_show_button',
+                                options=[{'label': x, 'value': x}
+                                         for x in ['Show Text', 'Hide Text']],
+                                value='Show Text',
+                                labelStyle={'display': 'inline-block'})]),
+                    # show accumulated/mean semantic distance
+                    html.Div(id='mean_semantic_distance'),
+                    html.Div(id='accumulated_semantic_distance'),
                     # dcc.Store stores the uploaded file
                     dcc.Store(id='shared_file')
                 ]
@@ -219,6 +226,15 @@ def display_page(pathname):
             ], style={'height': '30px', 'width': '450px', "borderBottom": 'none'}),
             # graph to show [TODO]
             html.Div(id='drop_down_show_graph'),
+            html.Div([dcc.RadioItems(
+                id='hide_show_button_demo',
+                options=[{'label': x, 'value': x}
+                         for x in ['Show Text', 'Hide Text']],
+                value='Show Text',
+                labelStyle={'display': 'inline-block'})]),
+            # show accumulated/mean semantic distance
+            html.Div(id='mean_semantic_distance_demo'),
+            html.Div(id='accumulated_semantic_distance_demo'),
             # go back home
             dcc.Link(dcc.Markdown('Go back home'), href="/", style=MARKDOWN_STYLE_NORMAL),
         ])
@@ -237,7 +253,7 @@ def display_page(pathname):
         return dcc.Markdown('Error: no content available', style=MARKDOWN_STYLE_LARGE)
 
 
-@app.callback(Output("download_template", "data"), [Input("btn_download_template", "n_clicks")])
+@app.callback(Output("download_template", "data"), Input("btn_download_template", "n_clicks"))
 def return_pdf(n_clicks):
     return send_file("./samples/template.xlsx")
 
@@ -252,7 +268,9 @@ def check_upload(contents, filename):
     shared_file = None
     # 1. check if we successfully read in a dataframe
     if isinstance(df, pd.DataFrame):
-        feedback = """🎉🎉🎉 **Successfully uploaded!**  """
+        feedback = """🎉🎉🎉 **Successfully uploaded!**
+        
+        """
         # check headings
         feedback += static.check_heading(df)
         feedback += static.check_minimal_length(df)
@@ -260,6 +278,7 @@ def check_upload(contents, filename):
         feedback += static.check_first_row(df)
         feedback += static.check_blank_value(df)
         feedback += static.check_value_type(df)
+        feedback += static.check_order(df)
         # store the uploaded file
         shared_file = df.to_json(date_format='iso', orient='split')
     # if we did not read in a dataframe
@@ -268,46 +287,62 @@ def check_upload(contents, filename):
     return feedback, shared_file
 
 
-@app.callback(Output("dta_graph", 'figure'),
-              Input('visualize', 'n_clicks'),
-              Input('shared_file', 'data'))
-def visualize(n_clicks, data):
+@app.callback([Output("dta_graph", 'children'),
+              Output("mean_semantic_distance", 'children'),
+              Output("accumulated_semantic_distance", 'children')],
+              [Input('visualize', 'n_clicks'),
+              Input('shared_file', 'data'),
+              Input('hide_show_button', 'value')])
+def visualize(n_clicks, data, hide_show):
 
     df = pd.read_json(data, orient='split')
-    # dta = DTA(df)
-    # dta.process_nodes()
-    # dta.process_edges()
-    # fig = dta.boxer()
 
-    # if n_clicks:
-    #     return fig
-    print(df)
-
-
-@app.callback(Output('drop_down_show_graph', 'children'),
-              Input('dropdown', 'value'))
-def show_dropdown(dropdown):
-    df = ''
-    if dropdown == 'example_whole':
-        df = static.read_in_demo('./samples/whole.txt', 'whole.txt')
-    elif dropdown == 'example_citizen':
-        df = static.read_in_demo('./samples/citizen3-1.txt', 'citizen3-1.txt')
-    elif dropdown == 'example_danmu':
-        df = static.read_in_demo('./samples/BiliBili_comments.xlsx', 'BiliBili_comments.xlsx')
+    dta = DTA(df)
+    dta.process_nodes()
+    dta.process_edges()
+    if hide_show == 'Show Text':
+        fig = dta.draw_graph(annotations_switch=True)
     else:
-        # if dropdown is None
+        fig = dta.draw_graph(annotations_switch=False)
+    # get background color as white
+    fig.layout.plot_bgcolor = '#fff'
+    fig.layout.paper_bgcolor = '#fff'
+
+    if n_clicks:
+        return (dcc.Graph(figure=fig),
+                f'Mean Semantic Distance: {dta.mean_semantic_distance}',
+                f'Accumulated Semantic Distance: {dta.accumulated_semantic_distance}')
+
+
+@app.callback([Output('drop_down_show_graph', 'children'),
+              Output("mean_semantic_distance_demo", 'children'),
+              Output("accumulated_semantic_distance_demo", 'children')],
+              [Input('dropdown', 'value'),
+               Input('hide_show_button_demo', 'value')])
+def show_dropdown(dropdown, hide_show):
+    if dropdown == 'example_whole':
+        df = pd.read_excel('./samples/whole.xlsx')
+    elif dropdown == 'example_citizen':
+        df = pd.read_csv('./samples/citizen3-1.txt', delimiter='\t')
+    elif dropdown == 'example_danmu':
+        df = pd.read_excel('./samples/BiliBili_comments.xlsx')
+    else:
         pass
-    # [TODO]
-    graph = "A graph will show here."
-    return graph
+    dta = DTA(df)
+    dta.process_nodes()
+    dta.process_edges()
+    if hide_show == 'Show Text':
+        fig = dta.draw_graph(annotations_switch=True)
+    else:
+        fig = dta.draw_graph(annotations_switch=False)
+    # get background color as white
+    fig.layout.plot_bgcolor = '#fff'
+    fig.layout.paper_bgcolor = '#fff'
 
-
-# demo reset [TODO]
-# @app.callback(Output('graph&reset', 'children'),
-#               Input('reset', 'n_clicks'))
-# def demo_reset(n_clicks):
-#     if n_clicks > 0:
-#         return html.Div(id='void')
+    return (dcc.Graph(figure=fig),
+            f'Mean Semantic Distance: {dta.mean_semantic_distance}',
+            f'Accumulated Semantic Distance: {dta.accumulated_semantic_distance}'
+            )
 
 
 if __name__ == '__main__':
@@ -315,5 +350,4 @@ if __name__ == '__main__':
                    use_reloader=False,
                    dev_tools_ui=True,
                    dev_tools_props_check=False,
-                   port=8080
-                   )
+                   port=8080)
