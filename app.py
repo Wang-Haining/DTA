@@ -38,7 +38,7 @@ app = dash.Dash(__name__,
                 suppress_callback_exceptions=True
                 )
 
-# server = app.server
+server = app.server
 
 md_intro = '''
 Visual DTA visualizes the structure of the topic flow within a conversation.
