@@ -369,7 +369,7 @@ def visualize_demo(dropdown, hide_show):
 # --------------------------------------------------CALLBACKS END--------------------------------------------------
 
 if __name__ == '__main__':
-    app.run_server(debug=True,
+    app.run_server(debug=False,
                    use_reloader=False,
                    dev_tools_ui=True,
                    dev_tools_props_check=False,
