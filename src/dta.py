@@ -1,6 +1,9 @@
 """
 Author: Haining Wang hw56@indiana.edu
+
+This module holds DTA class.
 """
+
 
 import warnings
 import numpy as np

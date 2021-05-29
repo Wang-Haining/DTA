@@ -1,3 +1,10 @@
+"""
+Author: Haining Wang hw56@indiana.edu
+
+This module holds functions for i/o and checking.
+"""
+
+
 import io
 import base64
 import chardet
@@ -17,11 +24,7 @@ MD_UPLOAD_FAIL = """**😭 Uploading Failed**.
         
         """
 
-
-MD_FEEDBACK_HEADING = f"""Please make sure the following seven headings are specified: {list(HEADINGS)}.
-                Headings are case- and sequence-insensitive, but space within a heading matters.
-                If you don't need "Dotted Line" or "Text," leave all values below as "NA".
-                We recommend using the template provided.  """
+MD_FEEDBACK_HEADING = f"""Please make sure the following seven headings are specified: {list(HEADINGS)}. Headings are case- and sequence-insensitive, but space within a heading matters. If you do not need "Dotted Line" or "Text," leave all values below as "NA". We recommend using the provided template."""
 
 
 def read_in_uploaded(contents, filename):
@@ -83,10 +86,10 @@ def check_heading(df):
     Case-insensitive, sequence-insensitive.
     """
     feedback = """
-    
-    Heading check:
-    
-    """
+
+**Heading check**:
+
+"""
     unique_lower_headings = set(str.lower(h) for h in set(df.columns))
     if len(unique_lower_headings) == 7 and unique_lower_headings == LOWER_HEADINGS:
         # desired situation: 7 headings without overlap
@@ -99,11 +102,10 @@ def check_heading(df):
     elif len(unique_lower_headings) < 7:
         missing = set(str.capitalize(h) for h in (LOWER_HEADINGS - unique_lower_headings))
         redundant = set(str.capitalize(h) for h in (unique_lower_headings - LOWER_HEADINGS))
-        feedback += f"Heading {[str.capitalize(h) for h in list(missing)]} {'is' if len(missing) == 1 else 'are'} missing.  "
+        feedback += f"Heading {[str.capitalize(h) for h in list(missing)]} {'is' if len(missing) == 1 else 'are'} missing."
         if not unique_lower_headings.issubset(HEADINGS):
             # wrong headings exist
-            feedback += f"Heading {[str.capitalize(h) for h in list(redundant)]} {'looks' if len(redundant) == 1 else 'look'} suspicious." \
-                        f"If {'it is' if len(redundant) == 1 else 'they are'} desired, you are responsible to check the values below {'it' if len(redundant) == 1 else 'them'}.  "
+            feedback += f" We are not going to use the values below Heading {[str.capitalize(h) for h in list(redundant)]}"
         else:
             pass
     elif len(unique_lower_headings) > 7:
@@ -121,13 +123,16 @@ def check_heading(df):
                 pass
             if redundant_or_overlap is not set():
                 feedback += f"Heading {[str.capitalize(h) for h in list(redundant_or_overlap)]} {'looks' if len(redundant_or_overlap) == 1 else 'look'} suspicious." \
-                            f"If {'it is' if len(redundant_or_overlap) == 1 else 'they are'} desired, you are " \
-                            f"responsible to check the values below {'it' if len(redundant_or_overlap) == 1 else 'them'}.  "
+                            f" We are not going to use the values below {'it' if len(redundant_or_overlap) == 1 else 'them'}.  "
             else:
                 pass
     else:
         pass
-    feedback += MD_FEEDBACK_HEADING if feedback != "Heading check:  " else "Looks good.  "
+    feedback += MD_FEEDBACK_HEADING if feedback != """
+
+**Heading check**:
+
+""" else "Looks good.  "
 
     return feedback
 
@@ -137,9 +142,9 @@ def check_minimal_length(df):
     """
     feedback = """
     
-    Minimal length check:
-    
-    """
+**Minimal length check**:
+
+"""
     feedback += """Looks good.""" if df['Proposition'].count() >= 2 else """Proposition count is too short (less than two)."""
     return feedback
 
@@ -148,10 +153,10 @@ def check_equal_length(df):
     Checks whether each column has the same length to `Proposition` column.
     """
     feedback = """
-    
-    Equal length check:
-    
-    """
+
+**Equal length check**:
+
+"""
     proposition_values_count = len(df.Proposition)
     heading_of_diff_len = set(heading if len(df[heading]) != proposition_values_count else None for heading in HEADINGS) - {None}
     if len(heading_of_diff_len) != 0:
@@ -160,10 +165,10 @@ def check_equal_length(df):
     else:
         pass
     feedback += """Looks good.""" if feedback == """
-    
-    Equal length check:
-    
-    """ else ""
+
+**Equal length check**:
+
+""" else ""
     return feedback
 
 def check_first_row(df):
@@ -171,32 +176,37 @@ def check_first_row(df):
     Checks if the first row is legal.
     The rules are:
         1. the first value under `Proposition` should be "0"
-        2. four headings (Responds To, Relation Type, Distance, and Dotted Line) should be "NA" (or one of the `UNKNOWN`)
+        2. three headings (Responds To, Relation Type, and Distance) should be "NA" (or one of the `UNKNOWN`)
         3. two headings (Speaker and Text) should have some value
+        4. `Dotted Line` should be all of zero if not going to use.(this is not checked here, will be checked in `check_value_type`)
     """
     feedback = """
     
-    First row check:
+**First row check**:
     
-    """
+"""
     # check the first value under `Proposition`
-    feedback += '' if df['Proposition'][0] == 0 else 'Please specify the first value under Proposition as "0".  '
+    feedback += '' if df['Proposition'][0] == 0 else 'Please specify the first value under Proposition as "0". '
+    problematic_headings = []
     try:
-        # the four headings
-        feedback += '' if df['Responds To'][0] == np.nan else 'The first value under "Responds To" should be "NA".  '
-        feedback += '' if df['Relation Type'][0] == np.nan else 'The first value under "Relation Type" should be "NA".  '
-        feedback += '' if df['Distance'][0] == np.nan else 'The first value under "Distance" should be "NA".  '
-        feedback += '' if df['Dotted Line'][0] == np.nan else 'The first value under "Responds To" should be "NA".  '
+        # the three headings
+        for heading in ['Responds To', 'Relation Type', 'Distance']:
+            problematic_headings.append(heading) if not np.isnan(df[heading][0]) else None
         # the two headings
-        feedback += '' if df['Speaker'][0] != np.nan else 'The first value under "Speaker" should not be blank.  '
-        feedback += '' if df['Text'][0] != np.nan else 'The first value under "Text" should not be blank.  '
+        feedback += '' if df['Speaker'][0] != np.nan else 'The first value under "Speaker" should not be blank. '
+        feedback += '' if df['Text'][0] != np.nan else 'The first value under "Text" should not be blank. '
     except:
         pass
-    feedback += "Looks good.  " if feedback == """
+    if problematic_headings != []:
+        feedback += f'''The first value{'s' if len(problematic_headings)>1 else ''} under {problematic_headings} should be "NA". '''
+    else:
+        pass
+
+    feedback += "Looks good." if feedback == """
     
-    First row check:
+**First row check**:
     
-    """ else ""
+""" else ""
     return feedback
 
 def check_blank_value(df):
@@ -206,13 +216,13 @@ def check_blank_value(df):
     """
     feedback = """
     
-    Blank value check:
+**Blank value check**:
     
-    """
+"""
     try:
-        feedback += '' if len(
+        feedback += '' if not len(
             df.Proposition) > df.Proposition.count() else 'Values under "Proposition" should never be blank or "NA".  '
-        feedback += '' if len(
+        feedback += '' if not len(
             df.Speaker) > df.Speaker.count() else 'Values under "Speaker" should never be blank or "NA".  '
         # feedback += '' if len(
         #     df.Text) > df.Text.count() else 'Values under "Text" should never be blank or "NA".  '
@@ -220,9 +230,9 @@ def check_blank_value(df):
         pass
     feedback += "Looks good." if feedback == """
     
-    Blank value check:
+**Blank value check**:
     
-    """ else ""
+""" else ""
     return feedback
 
 def check_value_type(df):
@@ -232,15 +242,15 @@ def check_value_type(df):
     `Responds To`: exist in Proposition (excluding the first value)
     `Relation Type`: T/P/B (excluding the first value)
     `Distance`: T=0, P=1/2/3, B=4 (excluding the first value)
-    `Dotted Line`: 0 or 1 (excluding the first value)
+    `Dotted Line`: 0 or 1 (including the first value)
     [TODO]
     No checks on `Speaker` and `Text`, but will convert values of those two column into strings (excluding the first values)
     """
     feedback = """
     
-    Value type check:
+**Value type check**:
     
-    """
+"""
     try:
         # Proposition
         feedback += '' if len(df.Proposition) == len(set(df.Proposition)) else 'Make sure no overlap or "NA" exists in "Proposition" column.  '
@@ -263,15 +273,15 @@ def check_value_type(df):
                 pass
         # Dotted Line
         dotted_line_str = [v for v in df['Dotted Line'].astype(str)]
-        for i in range(1, len(df['Dotted Line'])):
-            feedback += "" if dotted_line_str[i] in ['1', '0'] else f'''The {i}{'st' if str(i)[-1] == '1' else ('nd' if str(i)[-1] == '2' else ('rd' if str(i)[-1] == '3' else 'th'))} row's dotted line is specified incorrectly. Use "1" to indicate a tenuous connection between propositions and "0" otherwise.  '''
+        for i in range(0, len(df['Dotted Line'])):
+            feedback += "" if dotted_line_str[i] in ['1', '0', '1.0', '0.0'] else f'''The {i}{'st' if str(i)[-1] == '1' else ('nd' if str(i)[-1] == '2' else ('rd' if str(i)[-1] == '3' else 'th'))} row's dotted line is specified incorrectly. Use "1" to indicate a tenuous connection between propositions and "0" otherwise. If the field is not going to use, specify all values as 0.'''
     except:
         pass
     feedback += "Looks good." if feedback == """
     
-    Value type check:
+**Value type check**:
     
-    """ else ""
+""" else ""
     return feedback
 
 def check_order(df):

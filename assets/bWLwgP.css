@@ -166,11 +166,11 @@ blockquote {
 /* Links
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 a {
-  color: #1EAEDB; 
+  color: #506784;
   text-decoration: underline;
   cursor: pointer;}
 a:hover {
-  color: #0FA0CE; }
+  color: #60BAB6; }
 
 
 /* Buttons
@@ -376,6 +376,19 @@ hr {
   border-width: 0;
   border-top: 1px solid #E1E1E1; }
 
+/*this is used for styling STEP 1/2/3*/
+.wrapper_subheader {
+    border-left: 4px solid #62bab5;
+    /*background: #00738C;*/
+    background: #FFFFFF;
+    /*margin: 0 auto;  to make the div center align to the browser */
+    margin: 0; /* to make the div center align to the browser */
+    padding: 10px;
+    width: 900px; /* set it to anything */
+    height: 40px;
+    text-align: left;
+    background: linear-gradient(to right, #EDF9F7, 80%, #FFFFFF);
+}
 
 /* Clearing
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
@@ -413,3 +426,5 @@ there.
 
 /* Larger than Desktop HD */
 @media (min-width: 1200px) {}
+
+
