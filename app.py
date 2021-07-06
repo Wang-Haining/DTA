@@ -204,9 +204,10 @@ def display_page(pathname):
                         value='Show Text',
                         labelStyle={'display': 'inline-block'},
                         style=MARKDOWN_STYLE_SMALL)]),
-                    # show accumulated/mean semantic distance
+                    # show accumulated/mean semantic distance/mean semantic distance only counting Ps
                     html.Div(id='mean_semantic_distance', style=MARKDOWN_STYLE_SMALL),
                     html.Div(id='accumulated_semantic_distance', style=MARKDOWN_STYLE_SMALL),
+                    html.Div(id='mean_semantic_distance_only_for_P', style=MARKDOWN_STYLE_SMALL),
                     # dcc.Store stores the uploaded file
                     dcc.Store(id='shared_file')
                 ]
@@ -244,6 +245,7 @@ def display_page(pathname):
             # show accumulated/mean semantic distance
             html.Div(id='mean_semantic_distance_demo', style=MARKDOWN_STYLE_SMALL),
             html.Div(id='accumulated_semantic_distance_demo', style=MARKDOWN_STYLE_SMALL),
+            html.Div(id='mean_semantic_distance_only_for_P_demo', style=MARKDOWN_STYLE_SMALL),
             html.Br(),
             # go back home
             dcc.Link(dcc.Markdown('Go Back Home'), href="/", style=MARKDOWN_STYLE_NORMAL),
@@ -311,7 +313,8 @@ Please check the file regarding the above messages. Or you can process to visual
 
 @app.callback([Output("dta_graph", 'children'),
                Output("mean_semantic_distance", 'children'),
-               Output("accumulated_semantic_distance", 'children')],
+               Output("accumulated_semantic_distance", 'children'),
+               Output("mean_semantic_distance_only_for_P", 'children')],
               [Input('visualize', 'n_clicks'),
                Input('shared_file', 'data'),
                Input('hide_show_button', 'value')])
@@ -331,13 +334,15 @@ def visualize_uploaded(n_clicks, data, hide_show):
 
     if n_clicks:
         return (dcc.Graph(figure=fig),
-                f'Mean Semantic Distance: {dta.mean_semantic_distance}',
-                f'Accumulated Semantic Distance: {dta.accumulated_semantic_distance}')
+                f'Mean Semantic Distance (all): {dta.mean_semantic_distance}',
+                f'Accumulated Semantic Distance: {dta.accumulated_semantic_distance}',
+                f'Mean Semantic Distance (P): {dta.mean_semantic_distance_only_for_P}')
 
 
 @app.callback([Output('drop_down_show_graph', 'children'),
                Output("mean_semantic_distance_demo", 'children'),
-               Output("accumulated_semantic_distance_demo", 'children')],
+               Output("accumulated_semantic_distance_demo", 'children'),
+               Output("mean_semantic_distance_only_for_P_demo", 'children')],
               [Input('dropdown', 'value'),
                Input('hide_show_button_demo', 'value')])
 def visualize_demo(dropdown, hide_show):
@@ -361,8 +366,9 @@ def visualize_demo(dropdown, hide_show):
     fig.layout.paper_bgcolor = '#fff'
 
     return (dcc.Graph(figure=fig),
-            f'Mean Semantic Distance: {dta.mean_semantic_distance}',
-            f'Accumulated Semantic Distance: {dta.accumulated_semantic_distance}'
+            f'Mean Semantic Distance (all): {dta.mean_semantic_distance}',
+            f'Accumulated Semantic Distance: {dta.accumulated_semantic_distance}',
+            f'Mean Semantic Distance (P): {dta.mean_semantic_distance_only_for_P}'
             )
 
 
@@ -372,5 +378,5 @@ if __name__ == '__main__':
     app.run_server(debug=False,
                    use_reloader=False,
                    dev_tools_ui=True,
-                   dev_tools_props_check=False,
+                   dev_tools_props_check=True,
                    port=8080)

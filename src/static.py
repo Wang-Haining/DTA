@@ -45,7 +45,7 @@ def read_in_uploaded(contents, filename):
             df = MD_UPLOAD_FAIL
     elif "xls" in filename.split('.')[-1]:
         try:
-            df = pd.read_excel(io.BytesIO(decoded))
+            df = pd.read_excel(io.BytesIO(decoded), sheet_name="Sheet1")
         except ValueError:
             df = MD_UPLOAD_FAIL
     elif "txt" == filename.split('.')[-1] or "tsv" == filename.split('.')[-1]:

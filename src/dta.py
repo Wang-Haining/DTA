@@ -17,6 +17,14 @@ UNKNOWN = ['n/a', 'N/A', 'na', 'NA', '', np.nan, 'unknown', 'UNKNOWN', '?', '??'
 YES = [1, 'yes', 'y', 'Yes', 'YES', 'Y']
 NO = [0, 'no', 'n', 'No', 'NO', 'N']
 
+# # dev use
+# df_bilibili = pd.read_excel('samples/BiliBili_comments.xlsx')
+# dta = DTA(df_bilibili)
+# dta.process_nodes()
+# dta.process_edges()
+# dta.draw_graph(True)
+# #
+
 
 class DTA(object):
     """
@@ -41,6 +49,7 @@ class DTA(object):
         # semantic distance metrics
         self.accumulated_semantic_distance = None
         self.mean_semantic_distance = None
+        self.mean_semantic_distance_only_for_P = None
 
     def process_nodes(self):
         # calculates x, y coordinates from data
@@ -60,10 +69,10 @@ class DTA(object):
                 # TODO: ROBUST ('Responds To')
 #                 if not row['Responds To'] in UNKNOWN:
                 try:
-                    # for propositions coded with pure number
+                    # in case of string proposition
                     cur_x = self.nodes[int(row['Responds To'])][0] + float(row.Distance)
                 except:
-                    # in case of string proposition
+                    # for propositions coded with pure number
                     cur_x = self.nodes[row['Responds To']][0] + float(row.Distance)
 #                 else:
 #                     # deal with the [B]reak situation
@@ -87,6 +96,7 @@ class DTA(object):
         self.df['Pos'] = pd.Series(list(self.nodes.values()))
         self.accumulated_semantic_distance = max([x for node, (x, y) in self.nodes.items()])
         self.mean_semantic_distance = round(np.mean([x for node, (x, y) in self.nodes.items()]), 3)
+        self.mean_semantic_distance_only_for_P = round(np.mean([[x for node, (x, y) in self.nodes.items()][idx] for idx in list(self.df[self.df['Relation Type'] == 'P'].index)]), 3)
 
     def process_edges(self):
         """
@@ -96,11 +106,11 @@ class DTA(object):
         """
         for idx1, row1 in self.df.iterrows():
             for idx2, row2 in self.df.iterrows():
-                if row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in NO:
+                if row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in NO and row2.Distance != 4:
                     # self.edges.append([row1.Proposition, row2.Proposition])
                     self.graph.add_edge(row1.Proposition, row2.Proposition, dotted=False)
                 #                 edges.append((row1.Proposition, row2.Proposition))
-                elif row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in YES:
+                elif row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in YES and row2.Distance != 4:
                     # self.edges_dotted.append([row1.Proposition, row2.Proposition])
                     self.graph.add_edge(row1.Proposition, row2.Proposition, dotted=True)
                 #                 edges_dotted.append((row1.Proposition, row2.Proposition))
@@ -127,15 +137,38 @@ class DTA(object):
                 self.edge_dotted_y.append(y1)
                 self.edge_dotted_y.append(None)
 
+    def node_trace_first_proposition(self):
+        """
+
+        :return:
+        """
+        node_trace_first_proposition = go.Scatter(
+            # first entry
+            x=[self.df.iloc[0:1].Pos[0][0]],
+            y=[self.df.iloc[0:1].Pos[0][1]],
+            name='1st proposition',
+            mode='markers',
+            hoverinfo='text',
+            marker_symbol='square',
+            marker=dict(
+                showscale=False,
+                color='yellow',
+                size=8,
+                line_width=2))
+        return node_trace_first_proposition
+
     def node_trace_t(self):
         """
 
         :return:
         """
+        x = [self.df.iloc[0:1].Pos[0][0]] + [x for [x, y] in self.df[self.df['Relation Type'] == 'T'].Pos]
+        y = [self.df.iloc[0:1].Pos[0][1]] + [y for [x, y] in self.df[self.df['Relation Type'] == 'T'].Pos]
+
         node_trace_t = go.Scatter(
-            # first entry + all T
-            x=[self.df.iloc[0:1].Pos[0][0]] + [x for [x, y] in self.df[self.df['Relation Type'] == 'T'].Pos],
-            y=[self.df.iloc[0:1].Pos[0][1]] + [y for [x, y] in self.df[self.df['Relation Type'] == 'T'].Pos],
+            # all T
+            x=x,
+            y=y,
             name='Narrowly on-topic (T)',
             mode='markers',
             hoverinfo='text',
@@ -151,10 +184,13 @@ class DTA(object):
 
         :return:
         """
+        x = [self.df.iloc[0:1].Pos[0][0]] + [x for [x, y] in self.df[self.df['Relation Type'] == 'P'].Pos]
+        y = [self.df.iloc[0:1].Pos[0][1]] + [y for [x, y] in self.df[self.df['Relation Type'] == 'P'].Pos]
+
         node_trace_p = go.Scatter(
-            # first entry + all T
-            x=[self.df.iloc[0:1].Pos[0][0]] + [x for [x, y] in self.df[self.df['Relation Type'] == 'P'].Pos],
-            y=[self.df.iloc[0:1].Pos[0][1]] + [y for [x, y] in self.df[self.df['Relation Type'] == 'P'].Pos],
+            # all P
+            x=x,
+            y=y,
             name='Parallel Shift (P)',
             mode='markers',
             hoverinfo='text',
@@ -170,10 +206,13 @@ class DTA(object):
 
         :return:
         """
+        x = [self.df.iloc[0:1].Pos[0][0]] + [x for [x, y] in self.df[self.df['Relation Type'] == 'B'].Pos]
+        y = [self.df.iloc[0:1].Pos[0][1]] + [y for [x, y] in self.df[self.df['Relation Type'] == 'B'].Pos]
+
         node_trace_b = go.Scatter(
-            # first entry + all T
-            x=[self.df.iloc[0:1].Pos[0][0]] + [x for [x, y] in self.df[self.df['Relation Type'] == 'B'].Pos],
-            y=[self.df.iloc[0:1].Pos[0][1]] + [y for [x, y] in self.df[self.df['Relation Type'] == 'B'].Pos],
+            # all B
+            x=x,
+            y=y,
             name='Break (B)',
             mode='markers',
             hoverinfo='text',
@@ -225,20 +264,20 @@ class DTA(object):
             for i in range(self.df.shape[0])]
 
         return annotations
-
-    def no_annotations(self):
-        annotations = [dict(
-            x=self.df.iloc[i].Pos[0],
-            y=self.df.iloc[i].Pos[1],
-            hovertext=self.df.iloc[i].Speaker,
-            xanchor='left',
-            yanchor='bottom',
-            text=[],
-            visible=True,
-            showarrow=False)
-            for i in range(self.df.shape[0])]
-
-        return annotations
+    #
+    # def no_annotations(self):
+    #     annotations = [dict(
+    #         x=self.df.iloc[i].Pos[0],
+    #         y=self.df.iloc[i].Pos[1],
+    #         hovertext=self.df.iloc[i].Speaker,
+    #         xanchor='left',
+    #         yanchor='bottom',
+    #         text=[],
+    #         visible=True,
+    #         showarrow=False)
+    #         for i in range(self.df.shape[0])]
+    #
+    #     return annotations
 
     def draw_graph(self, annotations_switch):
         """
@@ -246,21 +285,38 @@ class DTA(object):
             annotations_switch: a boolean, a plotly dash radio-item value, control if the text is annotated on the graph
         """
         if annotations_switch:
-            fig = go.Figure(data=[self.node_trace_t(), self.node_trace_p(), self.node_trace_b(),
-                                  self.edge_trace(), self.edge_dotted_trace()],
-                            layout=go.Layout(
-                                titlefont_size=20,
-                                showlegend=True,
-                                hovermode='closest',
-                                width=1000,
-                                height=1000,
-                                margin=dict(b=20, l=5, r=5, t=40),
-                                annotations=self.annotations(),
-                                xaxis=dict(showgrid=False, zeroline=False, showticklabels=True),
-                                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                            )
+            fig = go.Figure()
+            fig.add_trace(self.node_trace_t())
+            fig.add_trace(self.node_trace_p())
+            fig.add_trace(self.node_trace_b())
+            fig.add_trace(self.node_trace_first_proposition())
+            fig.add_trace(self.edge_trace())
+            fig.add_trace(self.edge_dotted_trace())
+
+            fig.update_layout(go.Layout(
+                titlefont_size=20,
+                showlegend=True,
+                hovermode='closest',
+                # hoverlabel={'Proposition': [p for p in self.df.Proposition],
+                #             'Speaker': [s for s in self.df.Speaker],
+                #             'Text': [t for t in self.df.Text]},
+                width=1000,
+                height=1000,
+                margin=dict(b=20, l=5, r=5, t=40),
+                annotations=self.annotations(),
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=True),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=True)))
+
+            fig.update_yaxes(type='linear',
+                             # tickmode='auto',
+                             # title={'text': [str(p) for p in self.df.Proposition]},
+                             # ticktext=[y for y in self.edge_y].reverse(),
+                             # autorange="reversed",
+                             ticks='outside')
+            fig.update_xaxes(tickformat=',d')
+
         else:
-            fig = go.Figure(data=[self.node_trace_t(), self.node_trace_p(), self.node_trace_b(),
+            fig = go.Figure(data=[self.node_trace_t(), self.node_trace_p(), self.node_trace_b(), self.node_trace_first_proposition(),
                                   self.edge_trace(), self.edge_dotted_trace()],
                             layout=go.Layout(
                                 titlefont_size=20,
@@ -273,5 +329,11 @@ class DTA(object):
                                 xaxis=dict(showgrid=False, zeroline=False, showticklabels=True),
                                 yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                             )
-
+            fig.update_yaxes(type='linear',
+                             # tickmode='auto',
+                             # title={'text': [str(p) for p in self.df.Proposition]},
+                             # ticktext=[y for y in self.edge_y].reverse(),
+                             # autorange="reversed",
+                             ticks='outside')
+            fig.update_xaxes(tickformat=',d')
         return fig
