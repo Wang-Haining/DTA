@@ -377,6 +377,6 @@ def visualize_demo(dropdown, hide_show):
 if __name__ == '__main__':
     app.run_server(debug=False,
                    use_reloader=False,
-                   dev_tools_ui=True,
-                   dev_tools_props_check=True,
+                   dev_tools_ui=False,
+                   dev_tools_props_check=False,
                    port=8080)
