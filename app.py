@@ -92,7 +92,7 @@ app.layout = html.Div([
                                     'fontFamily': 'Times',
                                     'fontSize': 40,
                                     'color': "#3D4E76"}),
-                      html.Span(children=' Alpha',
+                      html.Span(children=' Dev. 0.0.3',
                                 style={
                                     'textAlign': 'left',
                                     'fontFamily': 'monospace',
