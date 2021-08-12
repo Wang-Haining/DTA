@@ -92,7 +92,7 @@ app.layout = html.Div([
                                     'fontFamily': 'Times',
                                     'fontSize': 40,
                                     'color': "#3D4E76"}),
-                      html.Span(children=' Dev. 0.0.3',
+                      html.Span(children=' Dev. 0.0.4',
                                 style={
                                     'textAlign': 'left',
                                     'fontFamily': 'monospace',
@@ -291,16 +291,17 @@ def check_upload(contents, filename):
     if isinstance(df, pd.DataFrame):
         feedback = """🎉🎉🎉 **Successfully uploaded!** 🎉🎉🎉"""
         # check headings
-        feedback += static.check_heading(df)
-        feedback += static.check_minimal_length(df)
-        feedback += static.check_equal_length(df)
-        feedback += static.check_first_row(df)
-        feedback += static.check_blank_value(df)
-        feedback += static.check_value_type(df)
-        feedback += static.check_order(df)
-        feedback += """
-        
-Please check the file regarding the above messages. Or you can process to visualize, but it may not work as expected, if at all."""
+        # feedback += static.check_heading(df)
+        # feedback += static.check_minimal_length(df)
+        # feedback += static.check_equal_length(df)
+        # feedback += static.check_first_row(df)
+        # feedback += static.check_blank_value(df)
+        # feedback += static.check_value_type(df)
+        # feedback += static.check_order(df)
+#         feedback += """
+#
+# Please check the file regarding the above messages. Or you can process to visualize, but it may not work as expected, if at all."""
+        feedback += "No check performed."
         # for testing purpose
         # print(feedback)
         # store the uploaded file

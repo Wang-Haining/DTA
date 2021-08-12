@@ -14,13 +14,17 @@ warnings.simplefilter("ignore")
 
 # reduced fool-proof
 UNKNOWN = ['n/a', 'N/A', 'na', 'NA', '', np.nan, 'unknown', 'UNKNOWN', '?', '??', "???"]
-YES = [1, 'yes', 'y', 'Yes', 'YES', 'Y']
-NO = [0, 'no', 'n', 'No', 'NO', 'N']
+# no-line(0), solid-line (1), and dotted-line (2)
+NO_LINE = [0, 'no', 'n', 'No', 'NO', 'N']
+SOLID_LINE = [1, 'yes', 'y', 'Yes', 'YES', 'Y']
+DOTTED_LINE = [2, 'SOLID', 'solid', 'solid line', 'SOLID LINE', 'SOLID_LINE', 'solid_line']
+# YES = [1, 'yes', 'y', 'Yes', 'YES', 'Y']
+# NO = [0, 'no', 'n', 'No', 'NO', 'N']
 
 # # # dev use
-# df_colbert = pd.read_excel('samples/colbert.xlsx')
+# df_colbert = pd.read_excel('samples/Clolbert_NewCoding_hw_edits.xlsx')
 # df_bilibili = pd.read_excel('samples/BiliBili_danmu.xlsx')
-# dta = DTA(df_bilibili)
+# dta = DTA(df_colbert)
 # dta.process_nodes()
 # dta.process_edges()
 # dta.draw_graph(True)
@@ -47,6 +51,8 @@ class DTA(object):
         self.edge_y = []
         self.edge_dotted_x = []
         self.edge_dotted_y = []
+        self.edge_noline_x = []
+        self.edge_noline_y = []
         # semantic distance metrics
         self.accumulated_semantic_distance = None
         self.mean_semantic_distance = None
@@ -101,41 +107,52 @@ class DTA(object):
 
     def process_edges(self):
         """
-        Finds edges and dotted edges
+        Finds no-line(0), dotted-line (1), and solid-line (2) edges
         :return:
         """
         for idx1, row1 in self.df.iterrows():
             for idx2, row2 in self.df.iterrows():
-                if row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in NO and row2.Distance != 4:
+                if row1.Proposition == row2['Responds To'] and row2['Line Type'] in NO_LINE and row2.Distance != 4:
                     # self.edges.append([row1.Proposition, row2.Proposition])
-                    self.graph.add_edge(row1.Proposition, row2.Proposition, dotted=False)
+                    self.graph.add_edge(row1.Proposition, row2.Proposition, line_type='no_line')
                 #                 edges.append((row1.Proposition, row2.Proposition))
-                elif row1.Proposition == row2['Responds To'] and row2['Dotted Line'] in YES and row2.Distance != 4:
+                elif row1.Proposition == row2['Responds To'] and row2['Line Type'] in SOLID_LINE and row2.Distance != 4:
                     # self.edges_dotted.append([row1.Proposition, row2.Proposition])
-                    self.graph.add_edge(row1.Proposition, row2.Proposition, dotted=True)
+                    self.graph.add_edge(row1.Proposition, row2.Proposition, line_type='solid_line')
+                #                 edges_dotted.append((row1.Proposition, row2.Proposition))
+                elif row1.Proposition == row2['Responds To'] and row2['Line Type'] in DOTTED_LINE and row2.Distance != 4:
+                    # self.edges_dotted.append([row1.Proposition, row2.Proposition])
+                    self.graph.add_edge(row1.Proposition, row2.Proposition, line_type='dotted_line')
                 #                 edges_dotted.append((row1.Proposition, row2.Proposition))
                 else:
                     # TODO: ROBUST
                     # should raise some error to guide users
                     pass
 
-        for edgeTuple_dottedDict in list(self.graph.edges.data()):
-            x0, y0 = self.graph.nodes[edgeTuple_dottedDict[:2][0]]['pos']
-            x1, y1 = self.graph.nodes[edgeTuple_dottedDict[:2][1]]['pos']
-            if not edgeTuple_dottedDict[2]['dotted']:
+        for edgeTuple in list(self.graph.edges.data()):
+            x0, y0 = self.graph.nodes[edgeTuple[:2][0]]['pos']
+            x1, y1 = self.graph.nodes[edgeTuple[:2][1]]['pos']
+            if edgeTuple[2]['line_type'] == 'solid_line':
                 self.edge_x.append(x0)
                 self.edge_x.append(x1)
                 self.edge_x.append(None)
                 self.edge_y.append(y0)
                 self.edge_y.append(y1)
                 self.edge_y.append(None)
-            else:
+            elif edgeTuple[2]['line_type'] == 'dotted_line':
                 self.edge_dotted_x.append(x0)
                 self.edge_dotted_x.append(x1)
                 self.edge_dotted_x.append(None)
                 self.edge_dotted_y.append(y0)
                 self.edge_dotted_y.append(y1)
                 self.edge_dotted_y.append(None)
+            else:
+                self.edge_noline_x.append(x0)
+                self.edge_noline_x.append(x1)
+                self.edge_noline_x.append(None)
+                self.edge_noline_y.append(y0)
+                self.edge_noline_y.append(y1)
+                self.edge_noline_y.append(None)
 
     # def node_trace_first_proposition(self):
     #     """
@@ -299,6 +316,21 @@ class DTA(object):
             mode='lines')
         return edge_dotted_trace
 
+    def edge_noline_trace(self):
+        """
+
+        :return:
+        """
+        edge_noline_trace = go.Scatter(
+            x=self.edge_noline_x,
+            y=self.edge_noline_y,
+            name="no line",
+            visible=True,
+            line=dict(width=0.01, color='#888'),
+            hoverinfo='none',
+            mode='lines')
+        return edge_noline_trace
+
     def annotations(self):
         annotations = [dict(
             x=self.df.iloc[i].Pos[0],
@@ -341,6 +373,7 @@ class DTA(object):
             fig.add_trace(self.node_trace_pr())
             fig.add_trace(self.edge_trace())
             fig.add_trace(self.edge_dotted_trace())
+            fig.add_trace(self.edge_noline_trace())
 
             fig.update_layout(go.Layout(
                 titlefont_size=20,
@@ -366,7 +399,7 @@ class DTA(object):
 
         else:
             fig = go.Figure(data=[self.node_trace_pr(), self.node_trace_t(), self.node_trace_p(), self.node_trace_b(), self.node_trace_x(),
-                                  self.edge_trace(), self.edge_dotted_trace()],
+                                  self.edge_trace(), self.edge_dotted_trace(), self.edge_noline_trace()],
                             layout=go.Layout(
                                 titlefont_size=20,
                                 showlegend=True,

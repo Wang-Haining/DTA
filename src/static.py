@@ -16,7 +16,10 @@ UNKNOWN = ['n/a', 'N/A', 'na', 'NA', 'Na', np.nan, 'unknown', 'UNKNOWN', '?', '?
 YES = [1, 'yes', 'y', 'Yes', 'YES', 'Y']
 NO = [0, 'no', 'n', 'No', 'NO', 'N']
 TYPES = ['B', 'P', 'T']
-HEADINGS = {'Proposition', 'Speaker', 'Responds To', 'Relation Type', 'Distance', 'Dotted Line', 'Text'}
+# comment out, stale
+# HEADINGS = {'Proposition', 'Speaker', 'Responds To', 'Relation Type', 'Distance', 'Dotted Line', 'Text'}
+
+HEADINGS = {'Proposition', 'Speaker', 'Responds To', 'Relation Type', 'Distance', 'Line Type', 'Text'}
 LOWER_HEADINGS = set(str.lower(h) for h in HEADINGS)
 
 MD_UPLOAD_FAIL = """**😭 Uploading Failed**.  
@@ -272,8 +275,10 @@ def check_value_type(df):
             else:
                 pass
         # Dotted Line
-        dotted_line_str = [v for v in df['Dotted Line'].astype(str)]
-        for i in range(0, len(df['Dotted Line'])):
+        # dotted_line_str = [v for v in df['Dotted Line'].astype(str)]
+        dotted_line_str = [v for v in df['Line Type'].astype(str)]
+        # for i in range(0, len(df['Dotted Line'])):
+        for i in range(0, len(df['Line Type'])):
             feedback += "" if dotted_line_str[i] in ['1', '0', '1.0', '0.0'] else f'''The {i}{'st' if str(i)[-1] == '1' else ('nd' if str(i)[-1] == '2' else ('rd' if str(i)[-1] == '3' else 'th'))} row's dotted line is specified incorrectly. Use "1" to indicate a tenuous connection between propositions and "0" otherwise. If the field is not going to use, specify all values as 0.'''
     except:
         pass
