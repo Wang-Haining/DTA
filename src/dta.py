@@ -28,6 +28,12 @@ DOTTED_LINE = [2, 'SOLID', 'solid', 'solid line', 'SOLID LINE', 'SOLID_LINE', 's
 # dta.process_nodes()
 # dta.process_edges()
 # dta.draw_graph(True)
+
+# def autodta(df=None):
+#     dta = DTA(df)
+#     dta.process_nodes()
+#     dta.process_edges()
+#     dta.draw_graph(True).show()
 # # #
 
 
@@ -394,8 +400,12 @@ class DTA(object):
                              # title={'text': [str(p) for p in self.df.Proposition]},
                              # ticktext=[y for y in self.edge_y].reverse(),
                              # autorange="reversed",
+                             constrain='range',
                              ticks='outside')
-            fig.update_xaxes(tickformat=',d')
+            fig.update_xaxes(tickformat=',d',
+                             scaleanchor="y",
+                             scaleratio=8
+                             )
 
         else:
             fig = go.Figure(data=[self.node_trace_pr(), self.node_trace_t(), self.node_trace_p(), self.node_trace_b(), self.node_trace_x(),
@@ -416,6 +426,10 @@ class DTA(object):
                              # title={'text': [str(p) for p in self.df.Proposition]},
                              ticktext=[y for y in self.edge_y].reverse(),
                              # autorange="reversed",
+                             constrain='range',
                              ticks='outside')
-            fig.update_xaxes(tickformat=',d')
+            fig.update_xaxes(tickformat=',d',
+                             scaleanchor="y",
+                             scaleratio=8
+                             )
         return fig
